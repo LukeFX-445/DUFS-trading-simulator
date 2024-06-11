@@ -1,6 +1,7 @@
 from datamodel import *
 from dataimport import *
 from Runscript import *
+from datetime import datetime
 
 """
 we only trade one good in each round
@@ -38,34 +39,43 @@ ticks = len(df)
 
 from examplealgo import Trader
 
+start = datetime.now()
 for tick in range(0, ticks):
     market_listings = extract_orders(df, tick)
-    sell_orders = market_listings[0]
-    buy_orders = market_listings[1]
-    print(sell_orders.keys())
+    sell_orders = market_listings[1]
+    buy_orders = market_listings[0]
 
     algo = Trader()
     orders = algo.run(market_listings)
     # order matching
-    for order in orders:
+    for order in orders: ### market listing still exists so woudl be vulnerable to someon just sending hundreds of orders
         if order.quantity < 0: # sell orders
             #match order with a buy order
-            quantity = order.quantity ###################### order is not an object, figure out how to get the order's price and quantity
+            quantity = order.quantity ###################### listing is not an object, figure out how to get the listing's price and quantity
             for listing in buy_orders:
                 print("---")
-                print(listing)
+                print(pos_limit - abs(portfolio.quantity))
+                print(order.quantity)
+                print(buy_orders[listing].iloc[0])
                 print("---")
-                if listing.price > order.price:
-                    fulfilled_amount = min(pos_limit - abs(portfolio.quantity), order.quantity, listing.quantity)
+                if listing > order.price:
+                    fulfilled_amount = min(int(pos_limit - abs(portfolio.quantity)), -order.quantity, buy_orders[listing].iloc[0])
+                    print(fulfilled_amount)
                     portfolio.quantity -= fulfilled_amount
                     portfolio.cash += fulfilled_amount * order.price
                     quantity += fulfilled_amount
-                if listing.quantity == 0 or listing.price < order.price:
+                if quantity == 0 or listing < order.price:
+                    print("OUT")
                     break
+                print(f"quantity left = {quantity}")
         elif order.quantity > 0: # buy orders
             pass
     # portfolio tracking
     break
+
+end = datetime.now()
+
+print(end-start)
 
 print(portfolio.quantity)
     
