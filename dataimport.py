@@ -8,15 +8,21 @@ def read_file(file_path, product):
     df = df[df['product'] == product]
     return df
 
+# def read_file(file_path, product):
+#     df = pd.read_csv(file_path)
+#     df = df[df['product'] == product]
+#     return df
+
+
 def extract_orders(df, tick):
     row = df[df["timestamp"] == tick*100]
-    buy_orders = {} #price:quantity pairs
-    sell_orders = {} #price:quantity pairs
-    for i in range(1, 3):
-        price = row[f"bid_price_{i}"][0]
-        buy_orders[price] = row[f"bid_volume_{i}"]
-    for i in range(3, 1, -1):
-        price = row[f"ask_price_{i}"][0]
-        sell_orders[price] = row[f"ask_volume_{i}"]
+    bid_orders = {} #price:quantity pairs
+    ask_orders = {} #price:quantity pairs
+    for i in range(1, 4):
+        price = row[f"bid_price_{i}"].iloc[0]
+        bid_orders[price] = row[f"bid_volume_{i}"]
+    for i in range(1,4):
+        price = row[f"ask_price_{i}"].iloc[0]
+        ask_orders[price] = row[f"ask_volume_{i}"]
     
-    return [buy_orders, sell_orders]
+    return [bid_orders, ask_orders]
