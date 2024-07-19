@@ -12,8 +12,7 @@ class OrderDirection(Enum):
             return "BUY"
         elif self.value == 2:
             return "SELL"
-        else:
-            return ""
+        return "ERROR" # shouldnt reach this! maybe return error
 
 class PricePoint:
     def __init__(self):
@@ -21,8 +20,8 @@ class PricePoint:
         self.size: int = 0
         self.total_volume: int = 0
 
-        self.head_order: OrderBookEntry | None = None
-        self.tail_order: OrderBookEntry | None = None
+        #self.head_order: OrderBookEntry | None = None
+        #self.tail_order: OrderBookEntry | None = None
 
 
 class Order:
@@ -43,21 +42,36 @@ class Order:
     def __str__(self):
         return f"{self.direction} {self.quantity}@{self.price} [{self.id}; {self.timestamp}]" 
 
-
+class Trade:
+    def __init__(self, direction: OrderDirection):
+        ...
 
 
 class OrderBookEntry:
-    def __init__(self, order: Order, parent_pricepoint = None):  
+    def __init__(self, order: Order, parent_pricepoint: list[OrderBookEntry]):  
         self.order: Order = order
 
-        self.next_order = None
-        self.prev_order = None
+        #self.next_order = None
+        #self.prev_order = None
         self.parent_pricepoint = parent_pricepoint
     
 
 class OrderTree:
     def __init__(self):
         self.price_points: SortedDict = SortedDict() # maps price (int) -> PricePoint (sorted increasingly)
+        self.orderentry_map = {}
+
+    
+    def insert_order(self, order: Order):
+        parent_pricepoint: list[OrderBookEntry] = self.price_points.setdefault(order.price, [])
+        entry = OrderBookEntry(order, parent_pricepoint)
+        parent_pricepoint.append(entry)
+        
+        self.orderentry_map[order.id] = entry
+    
+    def delete_order_by_id(self, orderid: int):
+        entry = self.orderentry_map[orderid]
+        entry.parent_pricepoint.remove(entry)
     
     def get_depth(self) -> int:
         return len(self.price_points)
@@ -75,6 +89,10 @@ class OrderTree:
             return price
         else:
             return None
+        
+    def get_first_order_at_price(self, price: int) -> OrderBookEntry:
+        return self.price_points[price][0]
+
 
 class OrderBook:
     """
@@ -87,7 +105,7 @@ class OrderBook:
 
     def __init__(self):
         self.history = deque()
-        self.orders: dict[int, OrderBookEntry] = dict() # Maps order id -> order
+        self.orders: dict[int, Order] = dict() # Maps order id -> order
 
         self.buy_book: OrderTree = OrderTree()
         self.sell_book: OrderTree = OrderTree()
@@ -112,7 +130,10 @@ class OrderBook:
             
             # insert order into sell order book
 
-
-
-
+    def match_order(self, order: Order):
+        if order.direction == OrderDirection.BUY:
+            book = self.sell_book
+        elif order.direction == OrderDirection.SELL:
+            book = self.buy_book
         
+
