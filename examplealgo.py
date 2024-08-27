@@ -1,7 +1,7 @@
 from datamodel import *
 
 class Trader:
-    def run(self, market_listings):
+    def run(self, market_listings, products):
         orders = []
         product = Listing(market_listings, "Amethysts")
         
