@@ -13,9 +13,10 @@ def extract_orders(df, tick, product):
     ask_orders = {} #price:quantity 
     for i in range(1, 4):
         price = row[f"bid_price_{i}"].iloc[0]
-        bid_orders[price] = row[f"bid_volume_{i}"]
+        bid_orders[price] = row[f"bid_volume_{i}"].iloc[0]
     for i in range(1, 4):
         price = row[f"ask_price_{i}"].iloc[0]
-        ask_orders[price] = row[f"ask_volume_{i}"]
+        ask_orders[price] = row[f"ask_volume_{i}"].iloc[0]
     
-    return [bid_orders, ask_orders]
+    return {"BUY": bid_orders, 
+            "SELL": ask_orders}
