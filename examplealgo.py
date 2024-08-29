@@ -1,6 +1,5 @@
 from datamodel import *
 
-
 class Trader:
     last_price = 0
     def run(self, orderbook, products):
@@ -13,8 +12,6 @@ class Trader:
         asks = list(product.sell_orders.keys())
         ask_quantities = list(product.sell_orders.values())
 
-        # print(list(product.buy_orders.items()))
-        #error with getting the asks
         price = self.last_price
         if bids[0] > price:
             highest_bid = asks[0]
