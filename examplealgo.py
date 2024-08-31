@@ -7,7 +7,7 @@ class Trader:
         for product in products:
             listings = Listing(orderbook[product], product)
             
-            bids= list(listings.buy_orders)
+            bids = list(listings.buy_orders)
             bid_quantities = list(listings.buy_orders.values())
 
             asks = list(listings.sell_orders.keys())
