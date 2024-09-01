@@ -1,62 +1,165 @@
-from datamodel import Listing, Order
-from dataimport import read_file, extract_orders
-from ordermatching import match_order
+import logging
 from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
+from typing import Dict, List
+import argparse
+import importlib.util
+import sys
 
-class Portfolio:
-    def __init__(self) -> None:
-        self.cash = 0
-        self.quantity = {} 
-        self.pnl = {}
+from datamodel import Listing, Order, Portfolio
+from dataimport import read_file, extract_orders, extract_bot_orders
+from ordermatching import match_order
 
-filepath = "Round Data\Options\Option_round_test.csv"
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-pos_limit = {}
-products, ticks, df = read_file(filepath)
+# Constants
+POSITION_LIMIT = 20
+MAX_TICKS = 1000
 
-from examplealgo import Trader # Loads the Trader class from the algorithm
+def import_trader(file_path: str) -> type:
+    """
+    Import the Trader class from the specified file.
 
-# Initialise holdings of each product at 0
-portfolio = Portfolio()
-for product in products: 
-    portfolio.quantity[product] = 0
-    pos_limit[product] = 20
+    :param file-path: Trading algo filepath.
+    """
+    try:
+        spec = importlib.util.spec_from_file_location("trader_module", file_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.Trader
+    except Exception as e:
+        logging.error(f"Error importing Trader class from {file_path}: {str(e)}")
+        sys.exit(1)
 
-quantity_data = pd.DataFrame(index=range(1, ticks), columns=[f"{product}_quantity" for product in products])
-
-algo = Trader()
-
-start = datetime.now()
-for tick in range(1, ticks):
-    print(tick)
+def initialise_portfolio(products: List[str]) -> Portfolio:
+    portfolio = Portfolio()
     for product in products:
-        orderbook = extract_orders(df, tick, product) 
-        orders = algo.run(orderbook, products) # Run the submitted algorithm on this tick
-        if orders != []:
-            for order in orders: 
-                #if order is valid:
-                """
-                CHECK IF THE ORDER IS A VALID ORDER
-                """
-                match_order(order, orderbook, portfolio, product, pos_limit)
+        portfolio.quantity[product] = 0
+    return portfolio
+
+def add_bot_orders(orderbook: Dict[str, Dict], bot_orders: Dict[str, Dict]) -> None:
+    """
+    Add bot orders to the existing orderbook.
+    
+    :param orderbook: Current orderbook
+    :param bot_orders: Bot orders in the same format as the orderbook
+    """
+    for product, sides in bot_orders.items():
+        for side, pricepoints in sides.items():
+            if product not in orderbook:
+                orderbook[product] = {"BUY": {}, "SELL": {}}
+            if side not in orderbook[product]:
+                orderbook[product][side] = {}
+            
+            for price, quantity in pricepoints.items():
+                if price in orderbook[product][side]:
+                    orderbook[product][side][price] += quantity
+                else:
+                    orderbook[product][side][price] = quantity
+
+def process_tick(tick: int, orderbook: Dict[str, Dict], bot_orders: Dict[str, Dict], algo, portfolio: Portfolio, products: List[str], pos_limit: Dict[str, int]) -> None:
+    try:
+        # Get orders from the trader 
+        try:
+            algo_orders = algo.run(orderbook, products)
+        except Exception as e:
+            logging.error(f"Error in trading algorithm: {str(e)}")
+
+        # Process algo orders
+        if algo_orders:
+            # Add bot orders to the orderbook
+            add_bot_orders(orderbook, bot_orders)
+
+            for order in algo_orders:
+                match_order(order, orderbook, portfolio, pos_limit)
+
+        portfolio.pnl = portfolio.cash
+        for product in products:
+            best_bid = next(iter(orderbook[product]["BUY"]))
+            best_ask = next(iter(orderbook[product]["SELL"]))
+            midprice = (best_bid + best_ask) / 2
+            portfolio.pnl += portfolio.quantity[product] * midprice
+            
+    except Exception as e:
+        logging.error(f"Error processing tick {tick}: {str(e)}")
+
+def update_quantity_data(quantity_data: pd.DataFrame, tick: int, portfolio: Portfolio, products: List[str]) -> None:
+    quantity_data.loc[tick, "PnL"] = portfolio.pnl
+    quantity_data.loc[tick, "Cash"] = portfolio.cash
+    for product in products:
         quantity_data.loc[tick, f"{product}_quantity"] = portfolio.quantity[product]
 
-    
-    """
-    PNL CALCULATIONS
-    """
+def main(round_data_path: str, trading_algo: str) -> None:
+    try:
+        products, ticks, df = read_file(round_data_path)
+        bot_df = pd.read_csv(round_data_path[:-4] + "_bots.csv")
+        portfolio = initialise_portfolio(products)
+        pos_limit = {product: POSITION_LIMIT for product in products}
 
-end = datetime.now()
+        # Import the Trader class
+        Trader = import_trader(trading_algo)
+        algo = Trader()
 
-# roughly 0:00:00.001054 per tick
-# roughly 10 seconds per day
-# 9.35
-# 3 seconds with no printing
-print((end-start))
-print(quantity_data)
-quantity_data["PUT_quantity"].plot()
-quantity_data["CALL_quantity"].plot()
-quantity_data["ASSET_quantity"].plot()
-plt.show()
+        # initialise the portfolio's initial value
+        portfolio.initial_value = portfolio.cash
+        for product in products:
+            portfolio.initial_value += portfolio.quantity[product] * next(iter(extract_orders(df, 1, product)["SELL"]))
+
+        quantity_data = pd.DataFrame(index=range(1, ticks), columns=[f"{product}_quantity" for product in products] + ["PnL", "Cash"])
+
+        start = datetime.now()
+        for tick in range(1, MAX_TICKS):
+            if tick % 100 == 0:
+                print(tick)
+
+            orderbook = {product: extract_orders(df, tick, product) for product in products}
+            bot_orders = {product: extract_bot_orders(bot_df, tick, product) for product in products}
+            try:
+                process_tick(tick, orderbook, bot_orders, algo, portfolio, products, pos_limit)
+                update_quantity_data(quantity_data, tick, portfolio, products)
+            except:
+                break
+
+        end = datetime.now()
+        print(f"Time per tick: {(end-start)/MAX_TICKS}")
+        print(quantity_data)
+
+        # Portfolio summary
+        print("\n=== Final Portfolio State ===")
+        print(f"Cash: {portfolio.cash:.2f}")
+        print(f"PnL: {portfolio.pnl:.2f}")
+        for product in products:
+            print(f"{product} quantity: {portfolio.quantity[product]}")
+
+        # Plotting
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 12))
+        fig.suptitle("Trading Simulation Results")
+
+        # Plot PnL
+        quantity_data["PnL"].plot(ax=ax1, title="Portfolio PnL")
+        ax1.set_xlabel("Tick")
+        ax1.set_ylabel("PnL")
+
+        # Plot product quantities over time
+        for product in products:
+            quantity_data[f"{product}_quantity"].plot(ax=ax2, label=product)
+        ax2.set_title("Product Quantities")
+        ax2.set_xlabel("Tick")
+        ax2.set_ylabel("Quantity")
+        ax2.legend()
+
+        plt.tight_layout()
+        plt.show()
+
+    except Exception as e:
+        logging.error(f"Error in main function: {str(e)}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run the trading simulation.")
+    parser.add_argument("--round", default="Round Data/Options/Option_round_test.csv", help="Main data file path")
+    parser.add_argument("--algo", default="examplealgo.py", help="Trading alngorithm path")
+    args = parser.parse_args()
+
+    main(args.round, args.algo)
