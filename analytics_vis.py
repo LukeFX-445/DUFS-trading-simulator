@@ -55,5 +55,4 @@ class Visualiser:
         return fig
 
     def display_visualisation(self):
-        fig = self.__create_graphs()
         fig.show()
