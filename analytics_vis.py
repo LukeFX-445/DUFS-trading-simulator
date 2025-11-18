@@ -53,7 +53,5 @@ class Visualiser:
         fig.update_layout(height=300 * (ceil(len(self.products) / 2) + 1))
 
         return fig
-
-    def display_visualisation(self):
-        fig = self.__create_graphs()
-        fig.show()
+def display_visualisation(self):
+    return  # Disable all visualisation for evaluation runs
