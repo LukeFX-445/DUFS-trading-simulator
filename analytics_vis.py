@@ -12,9 +12,11 @@ class Visualiser:
         new_cols = [col + "_pos" for col in self.volume_data.columns]
         self.volume_data.columns = new_cols
 
-    def __create_graphs(self):
-        subplot_titles = ("Pnl", "Positions", *self.products)
-        fig = make_subplots(ceil(len(self.products) / 2) + 1, 2, subplot_titles=subplot_titles)
+def __create_graphs(self):
+    import plotly.graph_objects as go
+    fig = go.Figure()
+    fig.update_layout(title="Visualisation Disabled", xaxis_title="Tick", yaxis_title="Value")
+    return fig
 
         # PnL plot
         pnl_plot = px.line(self.df, x=self.df.index, y="pnl")
