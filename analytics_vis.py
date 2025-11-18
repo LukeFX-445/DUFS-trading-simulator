@@ -54,4 +54,4 @@ class Visualiser:
 
         return fig
 def display_visualisation(self):
-    return  # Disable all visualisation for evaluation runs
+    print("Visualisation disabled during eval.")
