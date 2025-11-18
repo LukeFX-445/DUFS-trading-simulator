@@ -56,4 +56,8 @@ def __create_graphs(self):
 
         return fig
 def display_visualisation(self):
-    print("Visualisation disabled during eval.")
+    import builtins
+    if hasattr(builtins, "DISABLE_VISUALS") and builtins.DISABLE_VISUALS:
+        return  # Skip plotting entirely
+    fig = self.__create_graphs()
+    fig.show()
