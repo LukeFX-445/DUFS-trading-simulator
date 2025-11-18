@@ -13,6 +13,9 @@ from dataimport import read_file, extract_orders, extract_bot_orders
 from ordermatching import match_order
 from analytics_vis import Visualiser
 
+import builtins
+builtins.DISABLE_VISUALS = True
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -218,3 +221,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args.round, args.algo)
+
