@@ -85,7 +85,7 @@ def add_bot_orders(
                     market_buys.get(best_bot_buy_price, 0) + bot_quantity
                 )
 
-        elif "SELL" in sides:
+        if "SELL" in sides:
             bot_sell_orders = sides["SELL"]
             best_bot_sell_price = next(iter(bot_sell_orders.keys()), -1)
 
