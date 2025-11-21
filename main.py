@@ -202,7 +202,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run the trading simulation.")
     parser.add_argument(
         "--round",
-        default="Round Data/Round_1/Round_1.csv",
+        default="Round Data/Round_2/Round_2.csv",
         help="Main data file path",
     )
     parser.add_argument(
@@ -211,6 +211,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args.round, args.algo)
+
 
 
 
