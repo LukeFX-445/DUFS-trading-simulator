@@ -25,10 +25,20 @@ def extract_orders(df: pd.DataFrame, tick: int, product: str) -> Dict[str, Dict[
     bid_orders = {} #price:quantity
     ask_orders = {} #price:quantity
     for i in range(1, 4):
-        price = row[f"bid_price_{i}"].iloc[0]
+        pdef extract_orders(df, tick, product):
+    row = df[(df["product"] == product) & (df["tick"] == tick)]
+    if row.empty:
+        return {"BUY": {}, "SELL": {}}  # gracefully return empty book
+    ...
+
         bid_orders[price] = row[f"bid_volume_{i}"].iloc[0]
     for i in range(1, 4):
-        price = row[f"ask_price_{i}"].iloc[0]
+        def extract_orders(df, tick, product):
+    row = df[(df["product"] == product) & (df["tick"] == tick)]
+    if row.empty:
+        return {"BUY": {}, "SELL": {}}  # gracefully return empty book
+    ...
+
         ask_orders[price] = row[f"ask_volume_{i}"].iloc[0]
 
     return {"BUY": bid_orders,
@@ -59,3 +69,4 @@ def extract_bot_orders(df: pd.DataFrame, tick: int, product: str) -> Dict[str, D
 
     return {"BUY": bid_orders,
             "SELL": ask_orders}
+
